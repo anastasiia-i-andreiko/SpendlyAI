@@ -1,4 +1,4 @@
 aiogram==3.4.1
-groq
+groq==0.5.0
 sqlalchemy
 python-dotenv
