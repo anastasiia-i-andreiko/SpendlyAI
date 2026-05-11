@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, BigInteger, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database.base import Base
@@ -6,7 +6,6 @@ from database.base import Base
 class Expense(Base):
     __tablename__ = "expenses"
     id = Column(Integer, primary_key=True)
-    user_id = Column(BigInteger, index=True)  # Хто зробив запит
     amount = Column(Float)
     category = Column(String)
     description = Column(String)
@@ -15,7 +14,6 @@ class Expense(Base):
 class Goal(Base):
     __tablename__ = "goals"
     id = Column(Integer, primary_key=True)
-    user_id = Column(BigInteger, index=True)  # Власник цілі
     name = Column(String)
     target_amount = Column(Float)
     current_amount = Column(Float, default=0.0)
