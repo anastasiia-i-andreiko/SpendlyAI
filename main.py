@@ -1,3 +1,4 @@
+python
 import asyncio
 import logging
 
@@ -111,8 +112,7 @@ async def ai_chat_start(message: types.Message, state: FSMContext):
     kb.row(types.KeyboardButton(text="⬅️ Вийти з чату"))
     await message.answer(
         "🤖 *Режим чату з ШІ активовано.*\n"
-        "Запитуй що завгодно про фінанси!\n"
-        "Або просто напиши витрату: _'кава 60'_",
+        "Запитуй що завгодно про фінанси!",
         parse_mode="Markdown",
         reply_markup=kb.as_markup(resize_keyboard=True)
     )
@@ -125,7 +125,7 @@ async def ai_chat_exit(message: types.Message, state: FSMContext):
 @dp.message(AIChat.waiting_question)
 async def ai_chat_process(message: types.Message):
     await bot.send_chat_action(message.chat.id, "typing")
-    result = await ai.chat_with_user(message.text, user_id=message.from_user.id)
+    result = await ai.chat_with_user(message.text)
     await message.answer(result)
 
 
