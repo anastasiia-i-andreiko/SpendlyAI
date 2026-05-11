@@ -1,9 +1,11 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from database.base import Base
+# Обов'язково імпортуй моделі, щоб Base про них знав
+from database.models import Expense, Goal, GoalHistory 
 
-engine = create_engine("sqlite:///./spendly.db", connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+engine = create_engine('sqlite:///spendly.db')
+# Цей рядок автоматично створить таблиці, якщо їх немає:
+Base.metadata.create_all(bind=engine) 
 
-# Аліас, щоб finance_service.py міг імпортувати Session
-Session = SessionLocal
+Session = sessionmaker(bind=engine)
