@@ -1,124 +1,108 @@
-from database.session import SessionLocal
-from database.models import Expense, SavingsGoal, SavingsHistory
+from database.session import Session  # ОСЬ ЦЕЙ РЯДОК МАЄ БУТИ ТУТ
+from database.models import Expense, Goal, GoalHistory
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram import types
 from sqlalchemy import func
 
 
-# ── ВИТРАТИ ────────────────────────────────────────────
+# --- ВИТРАТИ ---
 
-def add_expense(amount: float, category: str, description: str = "") -> str:
-    with SessionLocal() as session:
-        session.add(Expense(amount=amount, category=category, description=description))
+def add_expense(user_id: int, amount: float, category: str, description: str = ""):
+    with Session() as session:
+        new_exp = Expense(user_id=user_id, amount=amount, category=category, description=description)
+        session.add(new_exp)
         session.commit()
-    return f"✅ Записано: {amount} грн — {category}"
 
 
-def get_all_expenses():
-    with SessionLocal() as session:
-        return session.query(Expense).order_by(Expense.created_at.desc()).limit(15).all()
+def get_all_expenses(user_id: int):
+    with Session() as session:
+        return session.query(Expense).filter_by(user_id=user_id).order_by(Expense.created_at.desc()).all()
 
 
-def delete_expense(exp_id: int) -> bool:
-    with SessionLocal() as session:
-        exp = session.query(Expense).get(exp_id)
+def get_expense_report(user_id: int):
+    with Session() as session:
+        expenses = session.query(Expense).filter_by(user_id=user_id).all()
+        if not expenses:
+            return "Витрат ще немає."
+
+        total = sum(e.amount for e in expenses)
+        return f"💰 Загалом: {total:.0f} грн"
+
+
+def delete_expense(expense_id: int):
+    with Session() as session:
+        exp = session.query(Expense).get(expense_id)
         if exp:
             session.delete(exp)
             session.commit()
             return True
-    return False
+        return False
 
 
-def update_expense_amount(exp_id: int, new_amount: float) -> bool:
-    with SessionLocal() as session:
-        exp = session.query(Expense).get(exp_id)
+def update_expense_amount(expense_id: int, new_amount: float):
+    with Session() as session:
+        exp = session.query(Expense).get(expense_id)
         if exp:
             exp.amount = new_amount
             session.commit()
             return True
-    return False
+        return False
 
 
-def get_expense_report() -> str:
-    with SessionLocal() as session:
-        stats = session.query(
-            Expense.category, func.sum(Expense.amount)
-        ).group_by(Expense.category).all()
-    if not stats:
-        return "Витрат ще немає."
-    total = sum(amt for _, amt in stats)
-    lines = "\n".join(f"• {cat}: {amt:.0f} грн" for cat, amt in stats)
-    return f"{lines}\n\n💰 Разом: {total:.0f} грн"
+# --- СКАРБНИЧКА ---
 
-
-# ── СКАРБНИЧКА ─────────────────────────────────────────
-
-def create_goal(name: str, target: float) -> str:
-    with SessionLocal() as session:
-        existing = session.query(SavingsGoal).filter(
-            SavingsGoal.name.ilike(name)
-        ).first()
-        if existing:
-            return "❌ Така ціль вже є."
-        session.add(SavingsGoal(name=name, target_amount=target))
+def create_goal(user_id: int, name: str, target: float):
+    with Session() as session:
+        new_goal = Goal(user_id=user_id, name=name, target_amount=target)
+        session.add(new_goal)
         session.commit()
-    return f"🎯 Ціль «{name}» створена! Ціль: {target:.0f} грн"
+        return f"🎯 Ціль '{name}' на {target:.0f} грн створена!"
 
 
-def add_to_goal(name: str, amount: float, description: str = "") -> str:
-    with SessionLocal() as session:
-        goal = session.query(SavingsGoal).filter(
-            SavingsGoal.name.ilike(f"%{name}%")
-        ).first()
-        if not goal:
-            return f"❌ Ціль «{name}» не знайдена. Спочатку створи її кнопкою 🎯"
-        goal.current_amount += amount
-        session.add(SavingsHistory(
-            goal_id=goal.id, amount=amount, description=description
-        ))
-        session.commit()
-        left = goal.target_amount - goal.current_amount
-        pct = (goal.current_amount / goal.target_amount * 100) if goal.target_amount else 0
-        return (
-            f"💰 Додано {amount:.0f} грн до «{goal.name}»\n"
-            f"Прогрес: {goal.current_amount:.0f} / {goal.target_amount:.0f} грн ({pct:.1f}%)\n"
-            f"Залишилось: {max(0, left):.0f} грн"
-        )
-
-
-def get_all_goals():
-    with SessionLocal() as session:
-        return session.query(SavingsGoal).all()
+def get_all_goals(user_id: int):
+    with Session() as session:
+        return session.query(Goal).filter_by(user_id=user_id).all()
 
 
 def get_goal_by_id(goal_id: int):
-    with SessionLocal() as session:
-        return session.query(SavingsGoal).get(goal_id)
+    with Session() as session:
+        return session.query(Goal).get(goal_id)
+
+
+def add_to_goal(goal_name: str, amount: float, description: str = "", user_id: int = None):
+    with Session() as session:
+        goal = session.query(Goal).filter_by(user_id=user_id, name=goal_name).first()
+        if goal:
+            goal.current_amount += amount
+            history = GoalHistory(goal_id=goal.id, amount=amount, description=description)
+            session.add(history)
+            session.commit()
+            return f"✅ Додано {amount:.0f} грн до '{goal_name}'"
+        return "❌ Ціль не знайдена."
 
 
 def get_goal_history(goal_id: int):
-    with SessionLocal() as session:
-        return session.query(SavingsHistory).filter(
-            SavingsHistory.goal_id == goal_id
-        ).order_by(SavingsHistory.created_at.desc()).all()
+    with Session() as session:
+        return session.query(GoalHistory).filter_by(goal_id=goal_id).order_by(GoalHistory.created_at.desc()).all()
 
 
-def delete_history_record(record_id: int) -> bool:
-    with SessionLocal() as session:
-        rec = session.query(SavingsHistory).get(record_id)
-        if rec:
-            goal = session.query(SavingsGoal).get(rec.goal_id)
-            if goal:
-                goal.current_amount -= rec.amount
-            session.delete(rec)
-            session.commit()
-            return True
-    return False
-
-
-def delete_goal(goal_id: int) -> bool:
-    with SessionLocal() as session:
-        goal = session.query(SavingsGoal).get(goal_id)
+def delete_goal(goal_id: int):
+    with Session() as session:
+        goal = session.query(Goal).get(goal_id)
         if goal:
             session.delete(goal)
             session.commit()
             return True
-    return False
+        return False
+
+
+def delete_history_record(record_id: int):
+    with Session() as session:
+        record = session.query(GoalHistory).get(record_id)
+        if record:
+            goal = record.goal
+            goal.current_amount -= record.amount
+            session.delete(record)
+            session.commit()
+            return True
+        return False

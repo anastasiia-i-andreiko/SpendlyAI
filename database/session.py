@@ -4,3 +4,6 @@ from database.base import Base
 
 engine = create_engine("sqlite:///./spendly.db", connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Аліас, щоб finance_service.py міг імпортувати Session
+Session = SessionLocal
