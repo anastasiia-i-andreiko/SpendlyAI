@@ -35,7 +35,7 @@
 
 ### 2. Клонування та встановлення
 ```bash
-git clone [https://github.com/anastasiia-i-andreiko/spendlyai.git](https://github.com/anastasiia-i-andreiko/spendlyai.git)
+git clone https://github.com/anastasiia-i-andreiko/spendlyai.git
 cd spendlyai
 pip install -r requirements.txt
 ```
